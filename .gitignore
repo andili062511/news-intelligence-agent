@@ -11,3 +11,5 @@ models/
 checkpoints/
 data/*.index
 data/*.pkl
+data/articles.jsonl
+data/chunks.jsonl

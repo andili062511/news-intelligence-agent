@@ -1,0 +1,2 @@
+"""News ingestion pipeline components."""
+
