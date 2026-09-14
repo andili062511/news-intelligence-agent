@@ -1,0 +1,13 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+models/
+checkpoints/
+data/*.index
+data/*.pkl
