@@ -9,7 +9,7 @@ Development Roadmap:
 - [x] FastAPI backend
 - [x] News ingestion pipeline
 - [x] BM25 retrieval
-- [ ] FAISS vector retrieval
+- [x] FAISS vector retrieval
 - [ ] Hybrid retrieval
 - [ ] Cross-encoder reranking
 - [ ] LangGraph Agent
@@ -63,4 +63,16 @@ Run it with:
 
 ```bash
 python -m retrieval.cli --query "artificial intelligence" --top-k 3
+```
+
+## FAISS Semantic Retrieval
+
+Dense semantic embeddings are generated using Sentence Transformers and indexed
+with FAISS. BM25 performs lexical / keyword retrieval, while FAISS performs
+semantic / dense vector retrieval.
+
+Run it with:
+
+```bash
+python -m retrieval.vector_cli --query "AI safety and advanced models" --top-k 3
 ```
