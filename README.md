@@ -12,29 +12,34 @@ Development Roadmap:
 - [x] FAISS vector retrieval
 - [x] Hybrid retrieval
 - [x] Cross-encoder reranking
-- [ ] LangGraph Agent
-- [ ] Evidence verification
+- [x] LangGraph Agent
+- [x] Evidence verification
+- [x] Grounded Qwen generation
 - [ ] QLoRA fine-tuning
 - [ ] Evaluation
 - [ ] Docker deployment
 
-Planned Architecture:
+Architecture:
 
 User Query
 
 Planner
 
-Hybrid Retrieval
-
 BM25 + FAISS
 
-Cross-Encoder Reranker
+RRF
 
-Evidence Checker
+Cross-Encoder
 
-LLM
+Evidence Sufficiency
 
-Citation Verification
+Citation Metadata Validation
+
+Grounding Pack
+
+Qwen Instruct (structured claims JSON)
+
+Claim Citation Validation
 
 Final Answer
 
@@ -125,3 +130,51 @@ Run it with:
 ```bash
 python -m retrieval.rerank_cli --query "machines becoming dangerously capable" --top-k 3 --candidate-k 15 --max-chunks-per-article 1
 ```
+
+## LangGraph Planner-Executor Agent
+
+LangGraph manages explicit agent state, conditional routing, bounded retries,
+and deterministic evidence sufficiency. The first version uses a rule-based
+planner and query rewriter, then generates an answer only from validated
+evidence.
+
+The agent workflow is:
+
+Question -> Planner -> Search Tool -> Hybrid Retrieval + Reranker -> Evidence Check
+
+When evidence is insufficient, the graph rewrites the query and retries search
+up to the configured maximum. Sufficient evidence then passes through citation
+preparation and validation. The graph finishes with `completed`,
+`citation_failed`, or `insufficient_evidence`.
+
+Run it with:
+
+```bash
+python -m agent.cli --question "What are the risks of rapidly advancing AI?" --model Qwen/Qwen2.5-1.5B-Instruct
+```
+
+## Evidence Verification & Citation Guardrails
+
+The pre-generation evidence flow is:
+
+Retrieval -> Reranking -> Evidence Sufficiency -> Deduplication -> Citation
+Metadata Validation -> Grounding Pack -> Qwen Instruct JSON -> Claim Citation
+Validation -> Deterministic Renderer -> Final Answer
+
+Each retained evidence item receives a stable ranking-order citation ID (`E1`,
+`E2`, ...). Required source metadata is validated, exact citation duplicates
+are removed, and the grounding decision requires enough evidence from multiple
+articles. No absolute reranker score threshold is used.
+
+## Grounded Answer Generation
+
+The language model receives only validated evidence and returns a JSON `claims`
+array. Every claim carries its own evidence IDs, such as `E1` and `E2`. The
+program validates those IDs and renders the final inline citations; it never
+guesses a citation for a claim. Malformed JSON, empty claims, missing citations,
+and unknown IDs receive at most one repair attempt. The final answer is exposed
+only after structured validation passes.
+
+`Qwen/Qwen2.5-1.5B-Instruct` can be used for local development. The architecture
+supports `Qwen/Qwen2.5-7B-Instruct`, but successful 7B execution has not been
+claimed or verified on appropriate hardware.

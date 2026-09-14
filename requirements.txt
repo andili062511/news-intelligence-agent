@@ -9,3 +9,8 @@ rank-bm25
 faiss-cpu
 sentence-transformers  # Embeddings and cross-encoder reranking
 numpy
+langgraph
+langchain-core
+transformers
+torch
+accelerate
