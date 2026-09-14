@@ -30,12 +30,16 @@ class FAISSRetriever:
         encoder: Encoder | None = None,
     ) -> None:
         self.chunks = chunks
-        self.encoder = encoder if encoder is not None else EmbeddingModel()
         self._index = None
 
         if not chunks:
+            # Do not load a Sentence Transformer when there is no corpus to
+            # index. The encoder can still be injected for consistency with
+            # non-empty retrievers.
+            self.encoder = encoder
             return
 
+        self.encoder = encoder if encoder is not None else EmbeddingModel()
         import faiss
 
         document_texts = [

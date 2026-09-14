@@ -7,5 +7,5 @@ trafilatura
 pytest
 rank-bm25
 faiss-cpu
-sentence-transformers
+sentence-transformers  # Embeddings and cross-encoder reranking
 numpy
