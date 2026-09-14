@@ -5,3 +5,4 @@ python-dotenv
 requests
 trafilatura
 pytest
+rank-bm25

@@ -8,7 +8,7 @@ Development Roadmap:
 
 - [x] FastAPI backend
 - [x] News ingestion pipeline
-- [ ] BM25 retrieval
+- [x] BM25 retrieval
 - [ ] FAISS vector retrieval
 - [ ] Hybrid retrieval
 - [ ] Cross-encoder reranking
@@ -54,3 +54,13 @@ The pipeline writes UTF-8 JSONL files to `data/articles.jsonl` and
 `data/chunks.jsonl`. It uses a small, sequential fetch limit for local
 development and falls back to the GDELT summary or title when full-text
 extraction is unavailable.
+
+## BM25 Retrieval
+
+BM25 provides keyword-based lexical retrieval over news chunks.
+
+Run it with:
+
+```bash
+python -m retrieval.cli --query "artificial intelligence" --top-k 3
+```
