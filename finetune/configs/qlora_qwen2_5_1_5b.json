@@ -1,5 +1,5 @@
 {
-  "model_name": "Qwen/Qwen2.5-7B-Instruct",
+  "model_name": "Qwen/Qwen2.5-1.5B-Instruct",
   "quantization": {
     "load_in_4bit": true,
     "bnb_4bit_quant_type": "nf4",
@@ -37,6 +37,6 @@
     "eos_token": "<|im_end|>",
     "gradient_checkpointing": true,
     "report_to": "none",
-    "output_dir": "outputs/qwen2.5-7b-planner-qlora"
+    "output_dir": "outputs/qwen2.5-1.5b-planner-qlora"
   }
 }

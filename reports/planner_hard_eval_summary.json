@@ -1,0 +1,113 @@
+{
+  "sample_count": 100,
+  "intent_accuracy": 0.87,
+  "tool_exact_match": 0.8,
+  "time_range_accuracy": 0.72,
+  "json_valid_rate": 1.0,
+  "schema_valid_rate": 1.0,
+  "search_query_nonempty_rate": 1.0,
+  "full_exact_match": 0.01,
+  "structural_exact_match": 0.66,
+  "tool_precision": 0.98989898989899,
+  "tool_recall": 0.9032258064516129,
+  "tool_f1": 0.9445783132530121,
+  "query_count_accuracy": 0.96,
+  "entity_coverage": 0.9520958083832335,
+  "query_token_recall": 0.5819672131147541,
+  "tool_metric_averaging": "micro over tool-set membership decisions",
+  "intent_confusion_matrix": {
+    "news_search": {
+      "news_search": 23,
+      "compare_news": 0,
+      "time_sensitive_news": 2,
+      "fact_check": 0
+    },
+    "compare_news": {
+      "news_search": 1,
+      "compare_news": 17,
+      "time_sensitive_news": 7,
+      "fact_check": 0
+    },
+    "time_sensitive_news": {
+      "news_search": 0,
+      "compare_news": 0,
+      "time_sensitive_news": 25,
+      "fact_check": 0
+    },
+    "fact_check": {
+      "news_search": 0,
+      "compare_news": 0,
+      "time_sensitive_news": 3,
+      "fact_check": 22
+    }
+  },
+  "per_intent_metrics": {
+    "news_search": {
+      "precision": 0.9583333333333334,
+      "recall": 0.92,
+      "f1": 0.9387755102040817,
+      "support": 25
+    },
+    "compare_news": {
+      "precision": 1.0,
+      "recall": 0.68,
+      "f1": 0.8095238095238095,
+      "support": 25
+    },
+    "time_sensitive_news": {
+      "precision": 0.6756756756756757,
+      "recall": 1.0,
+      "f1": 0.8064516129032258,
+      "support": 25
+    },
+    "fact_check": {
+      "precision": 1.0,
+      "recall": 0.88,
+      "f1": 0.9361702127659575,
+      "support": 25
+    }
+  },
+  "invalid_intent_prediction_count": 0,
+  "common_time_range_errors": [
+    {
+      "expected": "1month",
+      "predicted": "1week",
+      "count": 7
+    },
+    {
+      "expected": "1week",
+      "predicted": "1day",
+      "count": 5
+    },
+    {
+      "expected": "24hours",
+      "predicted": "1day",
+      "count": 5
+    },
+    {
+      "expected": "1week",
+      "predicted": null,
+      "count": 4
+    },
+    {
+      "expected": "24hours",
+      "predicted": null,
+      "count": 3
+    },
+    {
+      "expected": "24hours",
+      "predicted": "1week",
+      "count": 2
+    },
+    {
+      "expected": null,
+      "predicted": "1week",
+      "count": 2
+    }
+  ],
+  "query_metric_method": {
+    "normalization": "lowercase alphanumeric tokens with fixed stopwords removed",
+    "entity_detection": "capitalized expected-query tokens (titlecase, acronym, or internal capitals), excluding fixed stopwords",
+    "aggregation": "micro token/entity recall; query-count accuracy per sample"
+  }
+}

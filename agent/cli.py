@@ -26,7 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-chunks-per-article", type=_optional_positive_int, default=1
     )
     parser.add_argument("--max-retries", type=int, default=2)
-    parser.add_argument("--model", default="Qwen/Qwen2.5-7B-Instruct")
+    parser.add_argument("--model", default="Qwen/Qwen2.5-1.5B-Instruct")
     parser.add_argument("--max-new-tokens", type=int, default=256)
     return parser
 

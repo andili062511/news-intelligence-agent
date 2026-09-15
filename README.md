@@ -1,284 +1,168 @@
 # News Intelligence Agent
 
-A multi-source news intelligence agent based on RAG, tool orchestration and large language models.
+A multi-source news intelligence agent combining hybrid RAG, tool orchestration, evidence validation and parameter-efficient planner fine-tuning.
 
-Project Status: Under Development
+## Architecture
 
-Development Roadmap:
+```text
+User Question
+    -> Planner
+    -> BM25 + FAISS
+    -> Reciprocal Rank Fusion (RRF)
+    -> Cross-Encoder
+    -> Evidence Sufficiency
+    -> Citation Validation
+    -> Qwen Grounded Generation
+    -> Final Answer
+```
 
-- [x] FastAPI backend
-- [x] News ingestion pipeline
-- [x] BM25 retrieval
-- [x] FAISS vector retrieval
-- [x] Hybrid retrieval
-- [x] Cross-encoder reranking
-- [x] LangGraph Agent
-- [x] Evidence verification
-- [x] Grounded Qwen generation
-- [ ] QLoRA fine-tuning
-- [ ] Evaluation
-- [ ] Docker deployment
+When evidence is insufficient, the LangGraph workflow rewrites the query and retries within a fixed limit. A final answer is released only after its evidence metadata and claim citations pass validation.
 
-Architecture:
+## Key Features
 
-User Query
+- Multi-source ingestion with retry and GDELT-to-RSS fallback
+- Cleaning, deduplication and chunking
+- Hybrid lexical and semantic retrieval with BM25 and FAISS
+- Reciprocal Rank Fusion and Cross-Encoder reranking
+- LangGraph stateful agent orchestration
+- Evidence sufficiency and citation guardrails
+- Grounded Qwen answer generation
+- QLoRA / PEFT planner fine-tuning
+- FastAPI API with interactive documentation
+- Docker deployment
 
-Planner
+## Fine-tuning
 
-BM25 + FAISS
+The planner was fine-tuned from `Qwen/Qwen2.5-1.5B-Instruct` using 4-bit QLoRA and PEFT. Fine-tuning targets structured planner behavior—intent recognition, time-range mapping, query construction and tool selection—not dynamic news knowledge.
 
-RRF
+The project-generated dataset contains 900 training samples and 100 validation samples. The local smoke and mini-training experiment ran on an RTX 2060 6 GB GPU. The resulting adapter has 18,464,768 trainable parameters out of 907,081,216 total parameters (2.0356%). See [reports/FINAL_EVALUATION.md](reports/FINAL_EVALUATION.md) for the recorded experiment results.
 
-Cross-Encoder
+## Evaluation
 
-Evidence Sufficiency
+Hard evaluation uses 100 project-generated samples.
 
-Citation Metadata Validation
+| Metric | Base | QLoRA |
+|---|---:|---:|
+| Intent Accuracy | 0% | 87% |
+| Tool Exact Match | 0% | 80% |
+| Time Range Accuracy | 26% | 72% |
+| JSON Valid Rate | 40% | 100% |
+| Schema Valid Rate | 0% | 100% |
+| Tool F1 | - | 94% |
 
-Grounding Pack
+QLoRA produced the largest gains in structured output validity, intent recognition and tool selection. Exact time-range mapping and query wording remain the main weaknesses.
 
-Qwen Instruct (structured claims JSON)
+## Quick Start
 
-Claim Citation Validation
+Create and activate a virtual environment:
 
-Final Answer
+```bash
+python -m venv .venv
+```
 
-## News Ingestion
+PowerShell:
 
-The ingestion pipeline uses the following flow:
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
 
-GDELT/RSS -> Full-text extraction -> Cleaning -> Deduplication -> Chunking -> JSONL
+Install dependencies:
 
-Run it with:
+```bash
+python -m pip install -r requirements.txt
+```
+
+Ingest news from GDELT with automatic RSS fallback:
 
 ```bash
 python -m ingestion.pipeline --query "artificial intelligence" --max-records 30 --timespan 1week --language English --provider auto
 ```
 
-The pipeline writes UTF-8 JSONL files to `data/articles.jsonl` and
-`data/chunks.jsonl`. It uses a small, sequential fetch limit for local
-development and falls back to the GDELT summary or title when full-text
-extraction is unavailable. English is selected by default; pass
-`--language all` to retain articles in every language.
-Use `--provider gdelt` or `--provider rss` to force one source. The default
-`--provider auto` tries GDELT first and falls back to RSS when GDELT fails or
-returns no articles.
-
-The ingestion pipeline preserves the last valid local dataset when an upstream news provider is unavailable or rate-limited.
-
-## BM25 Retrieval
-
-BM25 provides keyword-based lexical retrieval over news chunks.
-
-Run it with:
+Run the retrieval stages directly:
 
 ```bash
 python -m retrieval.cli --query "artificial intelligence" --top-k 3
-```
-
-## FAISS Semantic Retrieval
-
-Dense semantic embeddings are generated using Sentence Transformers and indexed
-with FAISS. BM25 performs lexical / keyword retrieval, while FAISS performs
-semantic / dense vector retrieval.
-
-Run it with:
-
-```bash
 python -m retrieval.vector_cli --query "AI safety and advanced models" --top-k 3
+python -m retrieval.hybrid_cli --query "AI safety risks" --top-k 3
+python -m retrieval.rerank_cli --query "AI safety risks" --top-k 3 --candidate-k 15
 ```
 
-## Hybrid Retrieval
-
-The system combines BM25 lexical retrieval and FAISS dense semantic retrieval
-using Reciprocal Rank Fusion (RRF). BM25 and cosine similarity operate on
-different score scales, so rank-based fusion is used instead of directly
-adding their scores. For each candidate, the fusion score is
-`sum(1 / (rrf_k + rank))` across the retrieval routes that found it; the
-default `rrf_k` is 60.
-
-Run it with:
-
-```bash
-python -m retrieval.hybrid_cli --query "AI safety and risks of advanced models" --top-k 3
-```
-
-Use `--candidate-k` to control how many candidates each retriever contributes
-before fusion. Results include the final `rank`, `rrf_score`, chunk metadata,
-and the original BM25/FAISS ranks in `retrieval_sources`.
-
-To improve source-article diversity by returning at most one chunk per
-article:
-
-```bash
-python -m retrieval.hybrid_cli --query "AI safety and risks of advanced models" --top-k 3 --max-chunks-per-article 1
-```
-
-## Cross-Encoder Reranking
-
-The final retrieval pipeline is:
-
-BM25 + FAISS -> RRF -> Candidate Retrieval -> Cross-Encoder -> Final Evidence Ranking
-
-BM25 and FAISS provide high-recall candidate retrieval. The cross-encoder then
-scores each query-document pair more precisely to improve the ordering of the
-final evidence. Article-level diversity is applied after reranking, so relevant
-chunks are not discarded before the cross-encoder can evaluate them.
-
-Run it with:
-
-```bash
-python -m retrieval.rerank_cli --query "machines becoming dangerously capable" --top-k 3 --candidate-k 15 --max-chunks-per-article 1
-```
-
-## LangGraph Planner-Executor Agent
-
-LangGraph manages explicit agent state, conditional routing, bounded retries,
-and deterministic evidence sufficiency. The first version uses a rule-based
-planner and query rewriter, then generates an answer only from validated
-evidence.
-
-The agent workflow is:
-
-Question -> Planner -> Search Tool -> Hybrid Retrieval + Reranker -> Evidence Check
-
-When evidence is insufficient, the graph rewrites the query and retries search
-up to the configured maximum. Sufficient evidence then passes through citation
-preparation and validation. The graph finishes with `completed`,
-`citation_failed`, or `insufficient_evidence`.
-
-Run it with:
+Run the LangGraph agent CLI:
 
 ```bash
 python -m agent.cli --question "What are the risks of rapidly advancing AI?" --model Qwen/Qwen2.5-1.5B-Instruct
 ```
 
-## Evidence Verification & Citation Guardrails
-
-The pre-generation evidence flow is:
-
-Retrieval -> Reranking -> Evidence Sufficiency -> Deduplication -> Citation
-Metadata Validation -> Grounding Pack -> Qwen Instruct JSON -> Claim Citation
-Validation -> Deterministic Renderer -> Final Answer
-
-Each retained evidence item receives a stable ranking-order citation ID (`E1`,
-`E2`, ...). Required source metadata is validated, exact citation duplicates
-are removed, and the grounding decision requires enough evidence from multiple
-articles. No absolute reranker score threshold is used.
-
-## Grounded Answer Generation
-
-The language model receives only validated evidence and returns a JSON `claims`
-array. Every claim carries its own evidence IDs, such as `E1` and `E2`. The
-program validates those IDs and renders the final inline citations; it never
-guesses a citation for a claim. Malformed JSON, empty claims, missing citations,
-and unknown IDs receive at most one repair attempt. The final answer is exposed
-only after structured validation passes.
-
-`Qwen/Qwen2.5-1.5B-Instruct` can be used for local development. The architecture
-supports `Qwen/Qwen2.5-7B-Instruct`, but successful 7B execution has not been
-claimed or verified on appropriate hardware.
-
-## Agent Fine-tuning Dataset
-
-The planner instruction dataset is generated locally from deterministic
-templates and entity/topic combinations. Fine-tuning targets planner behavior
-rather than dynamic news knowledge; the files contain no ingested article text
-and do not teach answer generation or citation guessing.
-
-Training objectives include:
-
-- intent classification
-- query decomposition and rewriting
-- time-range understanding
-- tool selection
-- structured planner output
-
-Generate the reproducible 90/10 train and validation split with:
+Start FastAPI:
 
 ```bash
-python -m finetune.dataset_builder
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-Validate JSONL structure, planner schemas, duplicates, split overlap, and intent
-distribution with:
+Open `http://localhost:8000/docs` to test `POST /query`, or check `GET /health`.
+
+Example request:
 
 ```bash
-python -m finetune.validate_dataset
+curl -X POST http://localhost:8000/query -H "Content-Type: application/json" -d '{"question":"What are the risks of rapidly advancing AI?"}'
 ```
 
-## QLoRA Planner Fine-tuning
-
-The model is fine-tuned on planner behavior, not on dynamic news facts. The
-training architecture consists of `Qwen/Qwen2.5-7B-Instruct`, 4-bit NF4
-quantization, PEFT LoRA adapters, and the conversational planner instruction
-dataset. Only the fine-tuned planner adapter, tokenizer, and training metadata
-are saved under the ignored `outputs/` directory; the full base model is not
-copied into the repository.
-
-The default configuration is
-`finetune/configs/qlora_qwen2_5_7b.json`. It uses two epochs, batch size 1,
-gradient accumulation 8, learning rate `2e-4`, sequence length 512, and
-gradient checkpointing. Qwen's `<|im_end|>` token is used as the chat-template
-EOS. The compute dtype is selected at runtime: BF16 on a GPU that supports it
-and FP16 otherwise.
-
-Run a five-step development smoke test with the smaller model:
-
-```bat
-python -m finetune.train_qlora ^
-  --model Qwen/Qwen2.5-1.5B-Instruct ^
-  --train-file finetune/data/planner_train.jsonl ^
-  --val-file finetune/data/planner_val.jsonl ^
-  --output-dir outputs/qwen2.5-1.5b-planner-test ^
-  --max-steps 5
-```
-
-Run the formal 7B QLoRA job on suitable CUDA hardware:
-
-```bat
-python -m finetune.train_qlora ^
-  --model Qwen/Qwen2.5-7B-Instruct ^
-  --train-file finetune/data/planner_train.jsonl ^
-  --val-file finetune/data/planner_val.jsonl ^
-  --output-dir outputs/qwen2.5-7b-planner-qlora
-```
-
-The training command prints the trainable parameter count and percentage after
-PEFT has attached the adapter. No successful training run or metrics are
-claimed here.
-
-Evaluate the untouched base model, then the same base model with an adapter:
-
-```bat
-python -m finetune.evaluate_planner ^
-  --model Qwen/Qwen2.5-7B-Instruct ^
-  --val-file finetune/data/planner_val.jsonl ^
-  --max-samples 100
-
-python -m finetune.evaluate_planner ^
-  --model Qwen/Qwen2.5-7B-Instruct ^
-  --adapter outputs/qwen2.5-7b-planner-qlora ^
-  --val-file finetune/data/planner_val.jsonl ^
-  --max-samples 100
-```
-
-For a quick 20-sample evaluation of the 1.5B smoke-test adapter:
-
-```bat
-python -m finetune.evaluate_planner ^
-  --model Qwen/Qwen2.5-1.5B-Instruct ^
-  --adapter outputs/qwen2.5-1.5b-planner-test ^
-  --val-file finetune/data/planner_val.jsonl ^
-  --max-samples 20
-```
-
-Run one deterministic planner inference and inspect both the raw model text and
-the parsed, schema-validated object:
+Build and run with Docker:
 
 ```bash
-python -m finetune.inference_adapter \
-  --model Qwen/Qwen2.5-1.5B-Instruct \
-  --adapter outputs/qwen2.5-1.5b-planner-test \
-  "What happened with Anthropic this week?"
+docker build -t news-intelligence-agent .
+docker run -p 8000:8000 news-intelligence-agent
 ```
+
+The default image is intended to start the API with a CPU-compatible architecture. It does not claim or perform GPU QLoRA training inside the image. The first real query loads the configured retrieval and generation models; set `NIA_MODEL` only when intentionally selecting a compatible answer model.
+
+## API
+
+`POST /query` reuses the existing LangGraph agent, hybrid retrieval pipeline and Qwen generator. Its response includes the question, terminal status, validated answer, citations, evidence count, intent and final search queries. `insufficient_evidence` returns no answer, and `citation_failed` never exposes an unvalidated model answer.
+
+## Project Structure
+
+```text
+app/                 FastAPI application
+agent/               LangGraph planner-executor and validation guardrails
+ingestion/           GDELT/RSS ingestion, cleaning and chunking
+retrieval/           BM25, FAISS, RRF and Cross-Encoder retrieval
+llm/                 Grounded Qwen generation backend
+finetune/            Planner dataset, QLoRA utilities and evaluation
+finetune/data/       Retained instruction and evaluation JSONL datasets
+reports/             Final evaluation report and hard-eval artifacts
+tests/               Offline unit and integration tests
+Dockerfile           API container definition
+requirements.txt     Python dependencies
+```
+
+Generated articles, chunks, model weights, adapters, checkpoints and training outputs are intentionally excluded from Git and the Docker build context.
+
+## Limitations
+
+- The evaluation dataset is project-generated.
+- Dynamic news knowledge is retrieved through RAG rather than memorized through fine-tuning.
+- The local fine-tuning experiment used `Qwen/Qwen2.5-1.5B-Instruct`.
+- Generated news quality still depends on upstream source availability and evidence quality.
+- CPU inference is supported architecturally but may be slow and memory-intensive.
+
+## Roadmap
+
+- [x] FastAPI backend and `/query` endpoint
+- [x] Multi-source news ingestion with retry and fallback
+- [x] Cleaning, deduplication and chunking
+- [x] BM25 and FAISS retrieval
+- [x] RRF hybrid retrieval
+- [x] Cross-Encoder reranking
+- [x] LangGraph planner-executor
+- [x] Evidence sufficiency and query retry
+- [x] Citation validation and grounded generation
+- [x] QLoRA / PEFT planner fine-tuning
+- [x] Standard and hard evaluation
+- [x] Docker packaging
+
+Future work:
+
+- Larger-scale planner fine-tuning
+- More multilingual retrieval
+- NLI-based claim verification

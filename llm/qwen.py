@@ -13,7 +13,7 @@ class QwenLLM(BaseLLM):
 
     def __init__(
         self,
-        model_name: str = "Qwen/Qwen2.5-7B-Instruct",
+        model_name: str = "Qwen/Qwen2.5-1.5B-Instruct",
         model: Any = None,
         tokenizer: Any = None,
         device: str | torch.device | None = None,

@@ -15,7 +15,7 @@ from typing import Any, Mapping
 from finetune.schemas import validate_sample
 
 
-DEFAULT_CONFIG_PATH = Path(__file__).parent / "configs" / "qlora_qwen2_5_7b.json"
+DEFAULT_CONFIG_PATH = Path(__file__).parent / "configs" / "qlora_qwen2_5_1_5b.json"
 
 
 @dataclass(frozen=True, slots=True)

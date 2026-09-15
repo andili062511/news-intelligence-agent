@@ -30,7 +30,7 @@ EXPECTED_TARGETS = {
 def test_qlora_config_values_and_target_modules() -> None:
     config = load_training_config()
 
-    assert config.model_name == "Qwen/Qwen2.5-7B-Instruct"
+    assert config.model_name == "Qwen/Qwen2.5-1.5B-Instruct"
     assert config.quantization == {
         "load_in_4bit": True,
         "bnb_4bit_quant_type": "nf4",

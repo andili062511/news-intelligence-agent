@@ -1,0 +1,15 @@
+.git/
+.venv/
+venv/
+outputs/
+checkpoints/
+models/
+data/articles.jsonl
+data/chunks.jsonl
+.pytest_cache/
+**/__pycache__/
+*.pyc
+.env
+.vscode/
+.idea/
+reports/planner_hard_errors.jsonl
