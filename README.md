@@ -178,3 +178,31 @@ only after structured validation passes.
 `Qwen/Qwen2.5-1.5B-Instruct` can be used for local development. The architecture
 supports `Qwen/Qwen2.5-7B-Instruct`, but successful 7B execution has not been
 claimed or verified on appropriate hardware.
+
+## Agent Fine-tuning Dataset
+
+The planner instruction dataset is generated locally from deterministic
+templates and entity/topic combinations. Fine-tuning targets planner behavior
+rather than dynamic news knowledge; the files contain no ingested article text
+and do not teach answer generation or citation guessing.
+
+Training objectives include:
+
+- intent classification
+- query decomposition and rewriting
+- time-range understanding
+- tool selection
+- structured planner output
+
+Generate the reproducible 90/10 train and validation split with:
+
+```bash
+python -m finetune.dataset_builder
+```
+
+Validate JSONL structure, planner schemas, duplicates, split overlap, and intent
+distribution with:
+
+```bash
+python -m finetune.validate_dataset
+```
