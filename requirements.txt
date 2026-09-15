@@ -14,3 +14,7 @@ langchain-core
 transformers
 torch
 accelerate
+datasets
+trl
+peft
+bitsandbytes

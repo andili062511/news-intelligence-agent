@@ -206,3 +206,79 @@ distribution with:
 ```bash
 python -m finetune.validate_dataset
 ```
+
+## QLoRA Planner Fine-tuning
+
+The model is fine-tuned on planner behavior, not on dynamic news facts. The
+training architecture consists of `Qwen/Qwen2.5-7B-Instruct`, 4-bit NF4
+quantization, PEFT LoRA adapters, and the conversational planner instruction
+dataset. Only the fine-tuned planner adapter, tokenizer, and training metadata
+are saved under the ignored `outputs/` directory; the full base model is not
+copied into the repository.
+
+The default configuration is
+`finetune/configs/qlora_qwen2_5_7b.json`. It uses two epochs, batch size 1,
+gradient accumulation 8, learning rate `2e-4`, sequence length 512, and
+gradient checkpointing. Qwen's `<|im_end|>` token is used as the chat-template
+EOS. The compute dtype is selected at runtime: BF16 on a GPU that supports it
+and FP16 otherwise.
+
+Run a five-step development smoke test with the smaller model:
+
+```bat
+python -m finetune.train_qlora ^
+  --model Qwen/Qwen2.5-1.5B-Instruct ^
+  --train-file finetune/data/planner_train.jsonl ^
+  --val-file finetune/data/planner_val.jsonl ^
+  --output-dir outputs/qwen2.5-1.5b-planner-test ^
+  --max-steps 5
+```
+
+Run the formal 7B QLoRA job on suitable CUDA hardware:
+
+```bat
+python -m finetune.train_qlora ^
+  --model Qwen/Qwen2.5-7B-Instruct ^
+  --train-file finetune/data/planner_train.jsonl ^
+  --val-file finetune/data/planner_val.jsonl ^
+  --output-dir outputs/qwen2.5-7b-planner-qlora
+```
+
+The training command prints the trainable parameter count and percentage after
+PEFT has attached the adapter. No successful training run or metrics are
+claimed here.
+
+Evaluate the untouched base model, then the same base model with an adapter:
+
+```bat
+python -m finetune.evaluate_planner ^
+  --model Qwen/Qwen2.5-7B-Instruct ^
+  --val-file finetune/data/planner_val.jsonl ^
+  --max-samples 100
+
+python -m finetune.evaluate_planner ^
+  --model Qwen/Qwen2.5-7B-Instruct ^
+  --adapter outputs/qwen2.5-7b-planner-qlora ^
+  --val-file finetune/data/planner_val.jsonl ^
+  --max-samples 100
+```
+
+For a quick 20-sample evaluation of the 1.5B smoke-test adapter:
+
+```bat
+python -m finetune.evaluate_planner ^
+  --model Qwen/Qwen2.5-1.5B-Instruct ^
+  --adapter outputs/qwen2.5-1.5b-planner-test ^
+  --val-file finetune/data/planner_val.jsonl ^
+  --max-samples 20
+```
+
+Run one deterministic planner inference and inspect both the raw model text and
+the parsed, schema-validated object:
+
+```bash
+python -m finetune.inference_adapter \
+  --model Qwen/Qwen2.5-1.5B-Instruct \
+  --adapter outputs/qwen2.5-1.5b-planner-test \
+  "What happened with Anthropic this week?"
+```

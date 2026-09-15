@@ -1,0 +1,42 @@
+{
+  "model_name": "Qwen/Qwen2.5-7B-Instruct",
+  "quantization": {
+    "load_in_4bit": true,
+    "bnb_4bit_quant_type": "nf4",
+    "bnb_4bit_use_double_quant": true
+  },
+  "lora": {
+    "r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.05,
+    "bias": "none",
+    "task_type": "CAUSAL_LM",
+    "target_modules": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj",
+      "gate_proj",
+      "up_proj",
+      "down_proj"
+    ]
+  },
+  "training": {
+    "num_train_epochs": 2,
+    "per_device_train_batch_size": 1,
+    "per_device_eval_batch_size": 1,
+    "gradient_accumulation_steps": 8,
+    "learning_rate": 0.0002,
+    "warmup_steps": 0.05,
+    "logging_steps": 10,
+    "eval_strategy": "steps",
+    "eval_steps": 25,
+    "save_steps": 25,
+    "save_total_limit": 2,
+    "max_length": 512,
+    "eos_token": "<|im_end|>",
+    "gradient_checkpointing": true,
+    "report_to": "none",
+    "output_dir": "outputs/qwen2.5-7b-planner-qlora"
+  }
+}

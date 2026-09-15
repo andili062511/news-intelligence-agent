@@ -9,6 +9,7 @@ __pycache__/
 Thumbs.db
 models/
 checkpoints/
+outputs/
 data/*.index
 data/*.pkl
 data/articles.jsonl
